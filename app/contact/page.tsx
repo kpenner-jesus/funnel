@@ -160,6 +160,8 @@ export default function ContactPage() {
       venue_name:             SITE_CONFIG.venueName,
       venue_email:            SITE_CONFIG.venueEmail,
       venue_phone:            SITE_CONFIG.venuePhone,
+      date: new Date().toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" }),
+      quote_ref: `WE-${new Date().toISOString().split("T")[0].replace(/-/g,"")}-${String(adults).padStart(3,"0")}`,
       // to_email is used by some EmailJS templates to set the recipient
       to_email:               SITE_CONFIG.venueEmail,
       reply_to:               email.trim(),
