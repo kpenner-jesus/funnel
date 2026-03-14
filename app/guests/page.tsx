@@ -4,14 +4,67 @@ import { useRouter } from "next/navigation";
 import { useBookingStore } from "../store";
 import { SITE_CONFIG } from "../siteConfig";
 
+const STEP_BTN: React.CSSProperties = {
+  padding: "0.3rem 0.6rem",
+  background: "rgba(255,255,255,0.7)",
+  border: "1px solid rgba(0,0,0,0.12)",
+  borderRadius: 8,
+  fontSize: "0.78rem",
+  fontWeight: 600,
+  color: "var(--text-secondary)",
+  cursor: "pointer",
+  transition: "all 0.15s ease",
+  fontFamily: "var(--font-body)",
+  lineHeight: 1,
+};
+
+function Counter({
+  label, hint, value, min = 0, max = 999,
+  onChange,
+}: {
+  label: string; hint: string; value: number; min?: number; max?: number;
+  onChange: (n: number) => void;
+}) {
+  const adj = (d: number) => onChange(Math.min(max, Math.max(min, value + d)));
+  return (
+    <div style={{ marginBottom: "2rem" }}>
+      <div style={{ fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "0.75rem" }}>
+        {label}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
+        {[-100, -10, -1].map((d) => (
+          <button key={d} style={STEP_BTN} disabled={value + d < min}
+            onMouseEnter={(e) => { if (value + d >= min) { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--accent)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--accent)"; }}}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(0,0,0,0.12)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)"; }}
+            onClick={() => adj(d)}>
+            {d}
+          </button>
+        ))}
+        <div style={{ fontFamily: "var(--font-display)", fontSize: "2.2rem", fontWeight: 500, minWidth: "3rem", textAlign: "center", lineHeight: 1 }}>
+          {value}
+        </div>
+        {[1, 10, 100].map((d) => (
+          <button key={d} style={STEP_BTN} disabled={value + d > max}
+            onMouseEnter={(e) => { if (value + d <= max) { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--accent)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--accent)"; }}}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(0,0,0,0.12)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)"; }}
+            onClick={() => adj(d)}>
+            +{d}
+          </button>
+        ))}
+        <span style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginLeft: "0.25rem" }}>{hint}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function GuestsPage() {
   const router = useRouter();
-  const storedAdults       = useBookingStore((s) => s.adults);
-  const storedChildren     = useBookingStore((s) => s.children);
-  const storedChildrenAge  = useBookingStore((s) => s.childrenAvgAge);
-  const setAdults          = useBookingStore((s) => s.setAdults);
-  const setChildren        = useBookingStore((s) => s.setChildren);
-  const setChildrenAvgAge  = useBookingStore((s) => s.setChildrenAvgAge);
+  const storedAdults      = useBookingStore((s) => s.adults);
+  const storedChildren    = useBookingStore((s) => s.children);
+  const storedChildrenAge = useBookingStore((s) => s.childrenAvgAge);
+  const setAdults         = useBookingStore((s) => s.setAdults);
+  const setChildren       = useBookingStore((s) => s.setChildren);
+  const setChildrenAvgAge = useBookingStore((s) => s.setChildrenAvgAge);
 
   const [adults,   setLocalAdults]   = useState(storedAdults   || 0);
   const [children, setLocalChildren] = useState(storedChildren || 0);
@@ -23,7 +76,6 @@ export default function GuestsPage() {
 
   const handleContinue = () => {
     if (adults < 1) { setError("Please add at least 1 adult."); return; }
-    if (adults > 500) { setError("For groups over 500, please contact us directly."); return; }
     setAdults(adults);
     setChildren(children);
     setChildrenAvgAge(children > 0 ? avgAge : 0);
@@ -36,69 +88,37 @@ export default function GuestsPage() {
       <div className="tf-progress">
         <div className="tf-progress-fill" style={{ width: `${progress}%` }} />
       </div>
-
       <div className="tf-body">
         <div className="tf-step-label tf-animate">Step 2 of 8</div>
-
         <h1 className="tf-question tf-animate tf-animate-delay-1">
           How many <em>guests</em>?
         </h1>
-
         <p className="tf-subtext tf-animate tf-animate-delay-2">
           This determines your rooms, meals and meeting spaces.
         </p>
 
-        {/* Adults */}
-        <div className="tf-animate tf-animate-delay-2" style={{ marginBottom: "2.5rem" }}>
-          <div style={{ fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "1rem" }}>
-            Adults
-          </div>
-          <div className="tf-number-row">
-            <button className="tf-qty-btn" onClick={() => setLocalAdults(Math.max(0, adults - 1))} disabled={adults === 0}>−</button>
-            <div className="tf-qty-value">{adults}</div>
-            <button className="tf-qty-btn" onClick={() => setLocalAdults(Math.min(500, adults + 1))}>+</button>
-            <span style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginLeft: "0.5rem" }}>people 18+</span>
-          </div>
+        <div className="tf-animate tf-animate-delay-2">
+          <Counter label="Adults" hint="people 18+" value={adults} onChange={(n) => { setLocalAdults(n); setError(""); }} />
+          <Counter label={`Children (optional)`} hint="under 18" value={children} min={0} onChange={setLocalChildren} />
+          {children > 0 && (
+            <Counter label="Children's average age" hint="years old" value={avgAge} min={1} max={17} onChange={setLocalAvgAge} />
+          )}
         </div>
 
-        {/* Children */}
-        <div className="tf-animate tf-animate-delay-3" style={{ marginBottom: children > 0 ? "2.5rem" : "0" }}>
-          <div style={{ fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "1rem" }}>
-            Children <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
-          </div>
-          <div className="tf-number-row">
-            <button className="tf-qty-btn" onClick={() => setLocalChildren(Math.max(0, children - 1))} disabled={children === 0}>−</button>
-            <div className="tf-qty-value">{children}</div>
-            <button className="tf-qty-btn" onClick={() => setLocalChildren(children + 1)}>+</button>
-            <span style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginLeft: "0.5rem" }}>under 18</span>
+        {/* Always occupies space — fades in/out without layout shift */}
+        <div style={{
+          visibility: adults > 0 ? "visible" : "hidden",
+          opacity: adults > 0 ? 1 : 0,
+          transition: "opacity 0.35s ease",
+          marginBottom: "1.5rem",
+        }}>
+          <div className="tf-callout">
+            {isGroup
+              ? <><strong>Group pricing applies.</strong> You&apos;ll select meeting rooms, catered meals and activities after your rooms.</>
+              : <><strong>Small group booking.</strong> Groups of {SITE_CONFIG.groupMinimum}+ unlock catering and meeting rooms.</>
+            }
           </div>
         </div>
-
-        {/* Avg age — only when children > 0 */}
-        {children > 0 && (
-          <div className="tf-animate" style={{ marginBottom: "2rem" }}>
-            <div style={{ fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "1rem" }}>
-              Children&apos;s average age
-            </div>
-            <div className="tf-number-row">
-              <button className="tf-qty-btn" onClick={() => setLocalAvgAge(Math.max(1, avgAge - 1))} disabled={avgAge <= 1}>−</button>
-              <div className="tf-qty-value">{avgAge}</div>
-              <button className="tf-qty-btn" onClick={() => setLocalAvgAge(Math.min(17, avgAge + 1))} disabled={avgAge >= 17}>+</button>
-              <span style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginLeft: "0.5rem" }}>years old (avg)</span>
-            </div>
-          </div>
-        )}
-
-        {/* Group hint */}
-        {adults > 0 && (
-          <div className="tf-callout tf-animate" style={{ marginBottom: "1.5rem" }}>
-            {isGroup ? (
-              <><strong>Group pricing applies.</strong> You&apos;ll select meeting rooms, catered meals and activities after your rooms.</>
-            ) : (
-              <><strong>Small group booking.</strong> Groups of {SITE_CONFIG.groupMinimum}+ unlock catering and meeting rooms.</>
-            )}
-          </div>
-        )}
 
         {error && <div className="tf-alert-error" style={{ marginBottom: "1rem" }}>{error}</div>}
 
@@ -106,11 +126,7 @@ export default function GuestsPage() {
           OK
           <svg viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
-
-        <div className="tf-hint">
-          <kbd>Enter</kbd><span>to continue</span>
-        </div>
-
+        <div className="tf-hint"><kbd>Enter</kbd><span>to continue</span></div>
         <button className="tf-back" onClick={() => router.back()}>← Back</button>
       </div>
     </div>
