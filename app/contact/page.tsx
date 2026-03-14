@@ -15,10 +15,8 @@ export default function ContactStep() {
 
   useEffect(() => { 
     setIsLoaded(true);
-    // Initialize using the Public Key from the built-in Vault
-    const pubKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY;
-    if (pubKey) {
-      emailjs.init(pubKey);
+    if (process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY) {
+      emailjs.init(process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY);
     }
   }, []);
 
@@ -32,29 +30,74 @@ export default function ContactStep() {
     const uEmail = formData.get("user_email") as string;
     setSubmittedName(fName);
 
-    // Build the email summary
-    const dateStr = data.dateRange?.from 
-      ? `${new Date(data.dateRange.from).toLocaleDateString()} to ${new Date(data.dateRange.to || "").toLocaleDateString()}`
-      : "Dates not set";
-    
-    let items = "";
+    // --- 1. THE PRICE MAP (Names must match your card titles EXACTLY) ---
+    const prices: Record<string, number> = {
+      // Lodging
+      "Bachelor Suite": 129,
+      "Couples Suite": 159,
+      "Family Suite": 189,
+      "Two-Bedroom Suite": 249,
+      // Activities
+      "Canoe Rental": 25,
+      "Tubing & Rafting": 35,
+      "Pontoon Boat Experience": 150,
+      "Hoopla Island Obstacle Course": 20,
+      "Bannock Bake Activity": 15,
+      "Firepit with S'mores": 10,
+      "Wolf Howl Hike (Guided)": 20,
+      "Petroforms Guided Tour": 30
+    };
+
+    // --- 2. CALCULATE LODGING ---
+    let roomList = "";
+    let roomTotal = 0;
     Object.entries(data.roomCounts || {}).forEach(([name, qty]) => {
-      if (qty > 0) items += `\n- ${qty}x ${name}`;
+      if (qty > 0) {
+        const price = prices[name] || 0;
+        const subtotal = price * qty;
+        roomTotal += subtotal;
+        roomList += `\n- ${qty}x ${name} ($${price}/ea): $${subtotal}`;
+      }
     });
 
+    // --- 3. CALCULATE ACTIVITIES ---
+    let actList = "";
+    let actTotal = 0;
+    Object.entries(data.activities || {}).forEach(([name, qty]) => {
+      if (qty > 0) {
+        const price = prices[name] || 0;
+        const subtotal = price * qty;
+        actTotal += subtotal;
+        actList += `\n- ${qty}x ${name} ($${price}/ea): $${subtotal}`;
+      }
+    });
+
+    const grandTotal = roomTotal + actTotal;
+    const dateStr = data.dateRange?.from 
+      ? `${new Date(data.dateRange.from).toLocaleDateString()} to ${new Date(data.dateRange.to || "").toLocaleDateString()}`
+      : "Not specified";
+
     const emailContent = `
-OFFICIAL QUOTE REQUEST
------------------------
+OFFICIAL QUOTE REQUEST - WILDERNESS EDGE
+-----------------------------------------
 CUSTOMER: ${fName} ${lName}
 EMAIL: ${uEmail}
-DATES: ${dateStr}
-LODGING: ${items || "None"}
-MEALS: ${data.wantsMeals ? "Yes" : "No"}
------------------------
+
+STAY DETAILS:
+- Dates: ${dateStr}
+- Guests: ${data.adultCount} Adults, ${data.childCount} Children
+- Lodging:${roomList || "\n  None selected"}
+  LODGING SUBTOTAL: $${roomTotal}
+
+ACTIVITIES:${actList || "\n  None selected"}
+  ACTIVITIES SUBTOTAL: $${actTotal}
+
+-----------------------------------------
+ESTIMATED GRAND TOTAL: $${grandTotal}
+-----------------------------------------
     `;
 
     try {
-      // Pulling directly from the StackBlitz Vault
       await emailjs.send(
         process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!, 
         process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!, 
@@ -70,7 +113,7 @@ MEALS: ${data.wantsMeals ? "Yes" : "No"}
       setSent(true);
       setTimeout(() => { reset(); router.push("/"); }, 5000);
     } catch (err: any) {
-      alert("Vault Error: " + (err?.text || "The app couldn't find your keys in the settings."));
+      alert("Error: " + (err?.text || "Please check your keys."));
     } finally {
       setLoading(false);
     }
@@ -82,26 +125,27 @@ MEALS: ${data.wantsMeals ? "Yes" : "No"}
     return (
       <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
         <div className="bg-white p-10 rounded-3xl shadow-xl text-center max-w-md border border-emerald-100">
-          <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl flex items-center justify-center">✓</div>
+          <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl font-bold">✓</div>
           <h2 className="text-3xl font-black text-stone-900 mb-2">Quote Sent!</h2>
-          <p className="text-stone-500 mb-6 text-lg">Thank you, {submittedName}. Check your inbox!</p>
+          <p className="text-stone-500 mb-6 text-lg">Thank you, {submittedName}. Your itemized quote is in your inbox.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 py-12 px-4 font-sans">
+    <div className="min-h-screen bg-stone-50 py-12 px-4 font-sans text-stone-900">
       <div className="max-w-xl mx-auto bg-white rounded-3xl p-8 shadow-2xl border border-stone-200">
-        <h1 className="text-3xl font-black text-stone-900 mb-6 text-center">Get Your Official Quote</h1>
+        <h1 className="text-3xl font-black mb-2 text-center">Final Step</h1>
+        <p className="text-stone-500 text-center mb-8">Where should we send your estimate?</p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <input required name="first_name" placeholder="First Name" className="p-4 bg-stone-50 border border-stone-200 rounded-xl outline-none focus:border-emerald-600" />
             <input required name="last_name" placeholder="Last Name" className="p-4 bg-stone-50 border border-stone-200 rounded-xl outline-none focus:border-emerald-600" />
           </div>
           <input required name="user_email" type="email" placeholder="Email Address" className="w-full p-4 bg-stone-50 border border-stone-200 rounded-xl outline-none focus:border-emerald-600" />
-          <button type="submit" disabled={loading} className="w-full bg-emerald-700 text-white font-bold py-5 rounded-2xl shadow-xl text-xl">
-            {loading ? "Sending..." : "Email My Official Quote"}
+          <button type="submit" disabled={loading} className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-5 rounded-2xl shadow-xl text-xl mt-4">
+            {loading ? "Calculating..." : "Email My Official Quote"}
           </button>
         </form>
       </div>
