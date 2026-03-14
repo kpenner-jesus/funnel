@@ -1,76 +1,176 @@
+// ============================================================
+//  app/page.tsx — STEP 1: CHOOSE YOUR EVENT SEGMENT
+// ============================================================
+//
+//  This is the first page guests see. It asks the most
+//  fundamental question: what kind of event is this?
+//
+//  WHAT THIS PAGE DOES
+//  ────────────────────
+//  Displays a card for each segment defined in
+//  siteConfig.eventSegments. When a guest picks one:
+//
+//    • If the segment has event types (e.g. "Group Retreat"
+//      has Church, Corporate, Youth...) → go to /event-type
+//
+//    • If the segment has NO event types (e.g. "Individual
+//      Guest") → skip /event-type and go straight to /guests
+//
+//  This is the entry point to the entire funnel. Everything
+//  the guest does from here is tracked in the Zustand store.
+//
+//  CUSTOMIZATION TIPS
+//  ───────────────────
+//  • To add or remove segments: edit siteConfig.eventSegments
+//  • To change the hero image: update heroImageUrl in siteConfig
+//  • To skip segment selection entirely (one venue type only):
+//    remove the cards and call setSegment() with a fixed value
+//    then router.push("/guests") directly on page load
+//
+// ============================================================
+
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useFunnelStore } from "./store";
+import { useBookingStore } from "./store";
+import { SITE_CONFIG } from "./siteConfig";
 
-export default function WelcomeStep() {
+export default function HomePage() {
   const router = useRouter();
-  const setFunnelData = useFunnelStore((state) => state.setData);
 
-  const handleSegmentSelection = (segment: string) => {
-    // Initialize with defaults: 1 Adult, 0 Children
-    setFunnelData({ 
-      eventSegment: segment,
-      adultCount: 1,
-      childCount: 0 
-    });
-    router.push("/event-type");
+  // ── STORE ────────────────────────────────────────────────
+  const setSegment   = useBookingStore((s) => s.setSegment);
+  const setEventType = useBookingStore((s) => s.setEventType);
+
+  // ── SEGMENT SELECTION ────────────────────────────────────
+  const handleSegmentSelect = (segmentName: string) => {
+    setSegment(segmentName);
+    setEventType(""); // Clear any previously selected event type
+
+    // Find the segment config to check if it has sub-types
+    const segmentConfig = SITE_CONFIG.eventSegments.find(
+      (s) => s.name === segmentName
+    );
+
+    if (segmentConfig && segmentConfig.types.length > 0) {
+      // Has sub-types → go to event type selector
+      router.push("/event-type");
+    } else {
+      // No sub-types (e.g. Individual Guest) → skip to guests
+      router.push("/guests");
+    }
   };
 
-  const segments = [
-    { name: "Group Retreat", desc: "(Church, Corporate, Youth...)" },
-    { name: "Group Conference", desc: "(Business, Gov, Non-Profit...)" },
-    { name: "Family Gathering", desc: "(Reunion, Holiday, Milestone)" },
-    { name: "Wedding", desc: "(Ceremony, Reception, or Both)" },
-    { name: "Individual Guest", desc: "(Solo, Couple, Small Group)" },
-  ];
-
   return (
-    <div className="min-h-screen bg-stone-50 pb-20 font-sans">
-      {/* Hero Image Section */}
-      <div 
-        className="w-full h-80 bg-cover bg-center relative mb-8" 
-        style={{ backgroundImage: "url('https://cdn.prod.website-files.com/64cd635258e0dd2d44ca5585/64f656924da1d90492a10511_64d168dd2b8dffcaee1f7621_Frame20427319192-min-min.webp')" }}
-      >
-        <div className="absolute inset-0 bg-stone-900 bg-opacity-40 flex items-center justify-center"></div>
+    <div className="min-h-screen bg-stone-950 text-stone-100">
+
+      {/* ── HERO SECTION ─────────────────────────────────────── */}
+      <div className="relative h-56 sm:h-72 overflow-hidden">
+        {SITE_CONFIG.heroImageUrl && (
+          <img
+            src={SITE_CONFIG.heroImageUrl}
+            alt={SITE_CONFIG.venueName}
+            className="w-full h-full object-cover opacity-60"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
+        )}
+        {/* Dark gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-stone-950/40
+                        to-stone-950/80" />
+
+        {/* Venue name and tagline over the hero */}
+        <div className="absolute inset-0 flex flex-col items-center
+                        justify-center text-center px-6">
+          {SITE_CONFIG.venueLogo && (
+            <img
+              src={SITE_CONFIG.venueLogo}
+              alt={SITE_CONFIG.venueName}
+              className="h-12 w-auto object-contain mb-3 drop-shadow-lg"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
+          )}
+          <h1 className="text-2xl sm:text-3xl font-bold text-white drop-shadow-lg">
+            {SITE_CONFIG.venueName}
+          </h1>
+          {SITE_CONFIG.venueTagline && (
+            <p className="text-stone-300 text-sm mt-1 drop-shadow">
+              {SITE_CONFIG.venueTagline}
+            </p>
+          )}
+        </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 relative z-10 -mt-24">
-        <div className="bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl p-8 md:p-12 border border-stone-200">
-          
-          <div className="mb-6 flex justify-between items-center">
-            <span className="font-bold text-xl tracking-tight text-emerald-900 uppercase">Wilderness Edge</span>
-            <span className="text-sm font-bold text-stone-500 bg-stone-100 px-3 py-1 rounded-full border border-stone-200">
-              Step 1 of 5
-            </span>
-          </div>
+      {/* ── SEGMENT SELECTION ────────────────────────────────── */}
+      <div className="max-w-xl mx-auto px-6 py-10">
 
-          <h1 className="text-3xl md:text-5xl font-black text-stone-900 mb-4 text-center tracking-tight">
-            Plan Your Perfect Stay
-          </h1>
-          
-          <div className="text-stone-600 mb-10 text-center text-lg leading-relaxed max-w-2xl mx-auto">
-            <p>Welcome to Manitoba's premier waterfront venue. Let's build your personalized quote including lodging, catering, and activities.</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {segments.map((seg) => (
-              <button
-                key={seg.name}
-                onClick={() => handleSegmentSelection(seg.name)}
-                className="p-6 border-2 border-stone-100 rounded-2xl hover:border-emerald-600 hover:shadow-xl transition-all text-left flex flex-col justify-center bg-white group shadow-sm"
-              >
-                <span className="text-xl font-bold text-stone-800 group-hover:text-emerald-700 transition-colors">
-                  {seg.name}
-                </span>
-                <span className="text-sm text-stone-400 mt-1 font-medium">
-                  {seg.desc}
-                </span>
-              </button>
-            ))}
-          </div>
-
+        <div className="text-center mb-8">
+          <h2 className="text-xl font-bold text-stone-100">
+            What brings you to {SITE_CONFIG.venueName.split(" ")[0]}?
+          </h2>
+          <p className="text-stone-400 text-sm mt-2">
+            Select the option that best describes your visit.
+            We will tailor your quote accordingly.
+          </p>
         </div>
+
+        {/* ── SEGMENT CARDS ──────────────────────────────────────
+            One card per segment in siteConfig.eventSegments.
+            To add or remove segments, edit siteConfig.ts only.
+        ─────────────────────────────────────────────────────── */}
+        <div className="space-y-3">
+          {SITE_CONFIG.eventSegments.map((segment) => (
+            <button
+              key={segment.name}
+              onClick={() => handleSegmentSelect(segment.name)}
+              className="w-full text-left px-5 py-4 rounded-xl border
+                         border-stone-700 bg-stone-900 hover:border-emerald-600
+                         hover:bg-stone-800 transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-stone-100 group-hover:text-emerald-400
+                                  transition-colors">
+                    {segment.name}
+                  </div>
+                  {segment.desc && (
+                    <div className="text-stone-500 text-sm mt-0.5">
+                      {segment.desc}
+                    </div>
+                  )}
+                </div>
+                <div className="text-stone-600 group-hover:text-emerald-500
+                                transition-colors text-lg">
+                  →
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* ── VENUE CONTACT FOOTER ─────────────────────────────── */}
+        <div className="mt-10 text-center text-stone-600 text-xs space-y-1">
+          <p>Questions? We are happy to help.</p>
+          <p>
+            
+              href={`tel:${SITE_CONFIG.venuePhone}`}
+              className="hover:text-emerald-500 transition-colors"
+            >
+              {SITE_CONFIG.venuePhone}
+            </a>
+            {" · "}
+            
+              href={`mailto:${SITE_CONFIG.venueEmail}`}
+              className="hover:text-emerald-500 transition-colors"
+            >
+              {SITE_CONFIG.venueEmail}
+            </a>
+          </p>
+        </div>
+
       </div>
     </div>
   );
