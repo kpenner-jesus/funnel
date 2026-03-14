@@ -1,3 +1,4 @@
+"use client";
 function Counter({
   label, hint, value, min = 0, max = 999,
   onChange,
