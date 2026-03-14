@@ -393,7 +393,7 @@ export default function RoomsPage() {
 
         {/* Helpful note about what comes next */}
         <p className="text-center text-stone-600 text-xs mt-4">
-          {sessionStorage.getItem("isGroupBooking") === "true"
+          {typeof window !== "undefined" && sessionStorage.getItem("isGroupBooking") === "true"
             ? "Next: meeting rooms — then meals and activities."
             : "Next: your quote summary."}
         </p>
