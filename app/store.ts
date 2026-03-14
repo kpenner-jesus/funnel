@@ -240,3 +240,5 @@ export const useBookingStore = create<BookingState>((set) => ({
   resetBooking: () => set({ ...defaultState }),
 
 }));
+// Alias for any older pages that haven't been updated yet
+export const useFunnelStore = useBookingStore;
